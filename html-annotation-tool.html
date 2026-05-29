@@ -1,0 +1,2899 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PinMark 原型钉</title>
+    <style>
+        :root {
+            --ink: #20242c;
+            --muted: #68707d;
+            --line: #dfe4ea;
+            --panel: #ffffff;
+            --canvas: #edf1f5;
+            --accent: #e34b31;
+            --accent-2: #0e8f7b;
+            --accent-3: #c79a13;
+            --soft: #f7f9fb;
+            --focus: rgba(227, 75, 49, 0.18);
+            --radius: 8px;
+            --radius-sm: 6px;
+            --shadow: 0 18px 46px rgba(32, 36, 44, 0.13);
+            --shadow-soft: 0 8px 24px rgba(32, 36, 44, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+            background:
+                linear-gradient(90deg, rgba(32, 36, 44, 0.045) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(32, 36, 44, 0.045) 1px, transparent 1px),
+                linear-gradient(135deg, rgba(14, 143, 123, 0.05), transparent 34%),
+                var(--canvas);
+            background-size: 32px 32px;
+            color: var(--ink);
+        }
+
+        button,
+        input,
+        textarea,
+        select {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button,
+        .file-trigger,
+        input,
+        textarea,
+        select {
+            transition:
+                border-color 140ms ease,
+                background-color 140ms ease,
+                box-shadow 140ms ease,
+                transform 140ms ease,
+                color 140ms ease;
+        }
+
+        button:focus-visible,
+        .file-trigger:focus-within,
+        input:focus-visible,
+        textarea:focus-visible,
+        select:focus-visible {
+            outline: 0;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--focus);
+        }
+
+        .app {
+            min-height: 100vh;
+            height: 100vh;
+            height: 100dvh;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            overflow: hidden;
+        }
+
+        .topbar {
+            min-height: 50px;
+            display: grid;
+            grid-template-columns: minmax(178px, auto) minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 14px;
+            padding: 7px 12px;
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid var(--line);
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(18px) saturate(1.25);
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+
+        .brand {
+            min-width: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-self: start;
+            gap: 9px;
+        }
+
+        .brand-logo {
+            width: 34px;
+            height: 34px;
+            flex: 0 0 34px;
+            display: block;
+            filter: drop-shadow(0 8px 10px rgba(227, 75, 49, 0.2));
+        }
+
+        .brand-wordmark {
+            min-width: 0;
+        }
+
+        .brand-wordmark strong {
+            display: block;
+            font-size: 16px;
+            line-height: 1;
+            letter-spacing: 0;
+            white-space: nowrap;
+        }
+
+        .brand-wordmark span {
+            display: block;
+            margin-top: 3px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .project-title {
+            min-width: 0;
+            max-width: min(720px, 52vw);
+            justify-self: center;
+            height: 32px;
+            padding: 0 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink);
+            font-size: 13px;
+            font-weight: 800;
+            white-space: nowrap;
+            border: 1px solid rgba(32, 36, 44, 0.08);
+            border-radius: var(--radius-sm);
+            background: rgba(247, 249, 251, 0.88);
+        }
+
+        .project-title-label {
+            flex: 0 0 auto;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .project-title-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mode-switch {
+            flex: 0 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            padding: 3px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            background: #f2f5f7;
+        }
+
+        .mode-switch button {
+            height: 28px;
+            min-width: 76px;
+            border: 0;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--ink);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .mode-switch button.active {
+            background: var(--ink);
+            color: #fff;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .toolbar {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            justify-self: end;
+            flex-wrap: nowrap;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .mode-hint {
+            color: var(--muted);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .file-trigger,
+        .tool-btn {
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 0 12px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            background: #fff;
+            color: var(--ink);
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .file-trigger:hover,
+        .tool-btn:hover:not(:disabled) {
+            border-color: #c9d1db;
+            background: #f9fbfc;
+            transform: translateY(-1px);
+        }
+
+        .icon-control {
+            width: 34px;
+            min-width: 34px;
+            flex: 0 0 34px;
+            justify-content: center;
+            padding: 0;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .tool-btn.primary {
+            border-color: var(--ink);
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 8px 16px rgba(227, 75, 49, 0.22);
+        }
+
+        .tool-btn.primary:hover:not(:disabled) {
+            background: #d9432b;
+        }
+
+        .tool-btn:disabled {
+            opacity: 0.42;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .file-trigger input {
+            display: none;
+        }
+
+        .project-control {
+            display: none !important;
+        }
+
+        .workspace {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 300px;
+            grid-template-rows: minmax(0, 1fr);
+            gap: 14px;
+            padding: 14px;
+            overflow: hidden;
+        }
+
+        .stage-panel,
+        .side-panel {
+            min-height: 0;
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .stage-panel {
+            display: grid;
+            grid-template-rows: 1fr;
+            overflow: hidden;
+        }
+
+        .stage-wrap {
+            min-height: 0;
+            position: relative;
+            background:
+                radial-gradient(circle at top left, rgba(227, 75, 49, 0.08), transparent 260px),
+                radial-gradient(circle at bottom right, rgba(14, 143, 123, 0.08), transparent 280px),
+                #e3e8ed;
+            overflow: hidden;
+        }
+
+        .frame-shell {
+            position: absolute;
+            inset: 10px;
+            border: 1px solid #cbd3dc;
+            border-radius: var(--radius-sm);
+            background: #fff;
+            box-shadow: 0 18px 42px rgba(32, 36, 44, 0.14);
+            overflow: hidden;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+            background: #fff;
+        }
+
+        .annotation-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none;
+        }
+
+        .annotation-layer.annotating {
+            cursor: crosshair;
+            pointer-events: auto;
+        }
+
+        .layer-shade {
+            position: absolute;
+            inset: 0;
+            display: none;
+            background:
+                linear-gradient(90deg, rgba(227, 75, 49, 0.05) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(227, 75, 49, 0.05) 1px, transparent 1px),
+                rgba(227, 75, 49, 0.025);
+            background-size: 24px 24px;
+        }
+
+        .annotation-layer.annotating .layer-shade {
+            display: block;
+        }
+
+        .marker {
+            position: absolute;
+            z-index: 9;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            border: 2px solid #fff;
+            border-radius: 999px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            box-shadow: 0 0 0 2px var(--ink), 0 8px 18px rgba(227, 75, 49, 0.25);
+            user-select: none;
+            pointer-events: auto;
+        }
+
+        .marker.selected {
+            background: var(--accent-2);
+        }
+
+        .box-marker {
+            position: absolute;
+            z-index: 8;
+            border: 2px solid var(--accent);
+            border-radius: 2px;
+            background: rgba(227, 75, 49, 0.1);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85), 0 10px 20px rgba(227, 75, 49, 0.14);
+            pointer-events: auto;
+        }
+
+        .box-marker.selected {
+            border-color: var(--accent-2);
+            background: rgba(14, 143, 123, 0.14);
+        }
+
+        .box-badge {
+            position: absolute;
+            left: -2px;
+            top: -30px;
+            min-width: 28px;
+            height: 26px;
+            display: grid;
+            place-items: center;
+            padding: 0 8px;
+            border: 2px solid #fff;
+            border-radius: 4px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            box-shadow: 0 0 0 2px var(--ink);
+        }
+
+        .box-marker.selected .box-badge {
+            background: var(--accent-2);
+        }
+
+        .marker.annotation-hidden,
+        .box-marker.annotation-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .annotation-layer:not(.annotating) .marker,
+        .annotation-layer:not(.annotating) .box-marker {
+            pointer-events: none;
+        }
+
+        .draft-box {
+            position: absolute;
+            z-index: 12;
+            border: 2px dashed var(--ink);
+            border-radius: 2px;
+            background: rgba(199, 154, 19, 0.14);
+            pointer-events: none;
+        }
+
+        .empty-state {
+            position: absolute;
+            inset: 16px;
+            z-index: 14;
+            display: grid;
+            place-items: center;
+            background:
+                radial-gradient(circle at 50% 20%, rgba(255, 247, 214, 0.9), transparent 260px),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(247, 249, 251, 0.92)),
+                repeating-linear-gradient(-45deg, transparent 0 12px, rgba(32, 36, 44, 0.035) 12px 13px);
+            text-align: center;
+            padding: 32px;
+        }
+
+        .empty-card {
+            width: min(560px, 100%);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: #fff;
+            box-shadow: var(--shadow);
+            padding: 34px;
+        }
+
+        .empty-card::before {
+            content: "PinMark";
+            display: inline-flex;
+            align-items: center;
+            height: 24px;
+            padding: 0 10px;
+            margin-bottom: 14px;
+            border-radius: 999px;
+            background: #fff7d6;
+            color: #9b3a24;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .empty-card h1 {
+            margin: 0 0 12px;
+            font-size: clamp(25px, 4vw, 38px);
+            line-height: 1.05;
+            letter-spacing: 0;
+        }
+
+        .empty-card p {
+            margin: 0 auto 22px;
+            max-width: 430px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .empty-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .side-panel {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            overflow: hidden;
+        }
+
+        .side-head {
+            padding: 14px;
+            border-bottom: 1px solid var(--line);
+            background:
+                linear-gradient(135deg, rgba(255, 247, 214, 0.72), transparent 68%),
+                #fff;
+        }
+
+        .side-head h2 {
+            margin: 0;
+            font-size: 17px;
+            line-height: 1.2;
+        }
+
+        .side-meta {
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--accent-2);
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .side-scroll {
+            min-height: 0;
+            overflow: auto;
+            background: var(--soft);
+            scrollbar-width: thin;
+            scrollbar-color: #b9c2cc transparent;
+        }
+
+        .annotation-list {
+            padding: 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .annotation-item {
+            width: 100%;
+            text-align: left;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            background: #fff;
+            padding: 10px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .annotation-item:hover {
+            border-color: #c7d0da;
+            background: #fbfcfd;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .annotation-item.active {
+            border-color: var(--ink);
+            background: #ffffff;
+            box-shadow: inset 3px 0 0 var(--accent), var(--shadow-soft);
+        }
+
+        .item-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .item-title {
+            min-width: 0;
+            color: var(--ink);
+            font-size: 13px;
+            font-weight: 800;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tag {
+            flex: none;
+            height: 22px;
+            display: inline-flex;
+            align-items: center;
+            padding: 0 8px;
+            border: 1px solid rgba(23, 23, 23, 0.15);
+            border-radius: 999px;
+            background: #f0f6f4;
+            color: #0b6b5d;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .item-desc {
+            margin: 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.55;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .editor {
+            border-top: 1px solid var(--line);
+            background: #fff;
+            padding: 12px;
+        }
+
+        .editor-empty {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.8;
+            padding: 8px 2px;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .field label {
+            color: #35383d;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .field input,
+        .field textarea,
+        .field select {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            background: #fff;
+            color: var(--ink);
+            padding: 9px 10px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .field textarea {
+            min-height: 72px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .field input:focus,
+        .field textarea:focus,
+        .field select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--focus);
+        }
+
+        .editor-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .danger {
+            color: #a52613;
+            border-color: #f0b4aa;
+            background: #fff5f3;
+        }
+
+        .danger:hover:not(:disabled) {
+            border-color: #dc8f81;
+            background: #fff0ed;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 22px;
+            z-index: 80;
+            transform: translateX(-50%);
+            max-width: min(560px, calc(100vw - 28px));
+            padding: 10px 14px;
+            border: 1px solid var(--ink);
+            background: #fff;
+            color: var(--ink);
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: 5px 5px 0 rgba(23, 23, 23, 0.2);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 160ms ease, transform 160ms ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-4px);
+        }
+
+        @media (max-width: 1080px) {
+            .topbar {
+                grid-template-columns: minmax(160px, auto) minmax(0, 1fr);
+                padding: 7px 10px;
+            }
+
+            .project-title {
+                order: 3;
+                grid-column: 1 / -1;
+                max-width: 100%;
+                justify-self: stretch;
+                justify-content: flex-start;
+            }
+
+            .toolbar {
+                justify-content: flex-end;
+                flex-wrap: wrap;
+            }
+
+            .top-actions {
+                flex-wrap: wrap;
+            }
+
+            .workspace {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) minmax(260px, 36vh);
+                gap: 12px;
+                padding: 12px;
+            }
+
+            .stage-panel {
+                min-height: 0;
+            }
+
+            .side-panel {
+                min-height: 0;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .topbar {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .brand,
+            .project-title,
+            .top-actions {
+                justify-self: stretch;
+            }
+
+            .top-actions {
+                justify-content: flex-start;
+            }
+
+            .mode-hint {
+                width: 100%;
+            }
+
+            .workspace {
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .frame-shell,
+            .empty-state {
+                inset: 8px;
+            }
+
+            .mode-switch {
+                width: 100%;
+            }
+
+            .mode-switch button {
+                min-width: 0;
+            }
+
+            .file-trigger,
+            .tool-btn {
+                flex: 1 1 auto;
+                justify-content: center;
+                min-width: 112px;
+            }
+
+            .icon-control {
+                flex: 0 0 36px;
+                min-width: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="topbar">
+            <div class="brand" aria-label="PinMark 原型钉">
+                <svg class="brand-logo" viewBox="0 0 40 40" role="img" aria-label="PinMark">
+                    <path d="M9 7.5 25.8 5c2.5-.4 4.7 1.5 4.7 4v16.2c0 2.1-1.6 3.8-3.7 4L10 31.5c-2.5.3-4.6-1.6-4.6-4V11.4c0-2 1.5-3.6 3.6-3.9z" fill="#fff7d6" stroke="#171717" stroke-width="2.3" stroke-linejoin="round"/>
+                    <path d="M28.5 8.8c1.8.2 3.7 1.2 4.9 2.7 1.4 1.8 1.7 4.1.6 6.1l-1.1 2.1 1.9 1.5c1.8 1.4 2.2 3.9.8 5.7-1.1 1.5-3.1 2.2-4.9 1.7l-2-.6-1 1.9c-1.1 2.1-3.5 3.2-5.8 2.5-2.1-.6-3.7-2.4-4-4.5l-.3-2.2-2.2-.1c-2.5-.1-4.4-2.2-4.2-4.7.1-2 1.6-3.7 3.5-4.2l2.1-.5.2-2.2c.2-2.4 2.2-4.3 4.6-4.4 1.5-.1 2.9.6 3.9 1.6l1.4-1.4c.5-.5 1.2-.8 1.9-.7z" fill="#e34b31" stroke="#171717" stroke-width="2.3" stroke-linejoin="round"/>
+                    <circle cx="22.9" cy="20.6" r="1.5" fill="#171717"/>
+                    <circle cx="29.3" cy="20.6" r="1.5" fill="#171717"/>
+                    <path d="M23.8 25c1.2 1.1 3.4 1.1 4.6 0" fill="none" stroke="#171717" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M26.2 30.8 25 37" stroke="#171717" stroke-width="2.4" stroke-linecap="round"/>
+                    <path d="M15 13.2h5.9c3 0 5 1.8 5 4.5s-2 4.5-5 4.5h-2v5.2H15V13.2z" fill="#171717"/>
+                    <path d="M18.9 16.6v2.8h1.8c1 0 1.6-.5 1.6-1.4s-.6-1.4-1.6-1.4h-1.8z" fill="#fff7d6"/>
+                </svg>
+                <div class="brand-wordmark">
+                    <strong>PinMark</strong>
+                    <span>原型钉</span>
+                </div>
+            </div>
+
+            <div class="project-title" title="当前原型文件">
+                <span class="project-title-label">文件名：</span>
+                <span class="project-title-name" id="projectName">尚未导入原型</span>
+            </div>
+
+            <div class="top-actions">
+                <span class="mode-hint" id="modeHint">浏览模式：可以正常操作原型</span>
+                <div class="mode-switch" aria-label="工作模式">
+                    <button type="button" id="browseModeBtn" class="active">浏览模式</button>
+                    <button type="button" id="annotateModeBtn">标注模式</button>
+                </div>
+
+                <div class="toolbar">
+                    <label class="file-trigger icon-control" title="导入 HTML">
+                        📂
+                        <input id="htmlInput" type="file" accept=".html,.htm,text/html">
+                    </label>
+                    <label class="file-trigger project-control">
+                        导入项目
+                        <input id="projectInput" type="file" accept=".json,application/json">
+                    </label>
+                    <button class="tool-btn project-control" id="exportProjectBtn" type="button" disabled>导出项目</button>
+                    <button class="tool-btn primary icon-control" id="exportHtmlBtn" type="button" title="导出给研发" disabled>📤</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <section class="stage-panel">
+                <div class="stage-wrap" id="stageWrap">
+                    <div class="frame-shell" id="frameShell">
+                        <iframe id="prototypeFrame" title="原型预览" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-same-origin"></iframe>
+                        <div class="annotation-layer" id="annotationLayer">
+                            <div class="layer-shade"></div>
+                        </div>
+                    </div>
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-card">
+                            <h1>把原型钉在同一页</h1>
+                            <p>导入 HTML 原型后，在真实交互里打点、框选、补说明，再导出一份可直接交付研发的标注页面。</p>
+                            <div class="empty-actions">
+                                <label class="file-trigger">
+                                    选择 HTML 文件
+                                    <input id="emptyHtmlInput" type="file" accept=".html,.htm,text/html">
+                                </label>
+                                <button class="tool-btn" id="restoreDraftBtn" type="button">恢复本地草稿</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="side-panel">
+                <div class="side-head">
+                    <h2>标注清单</h2>
+                    <div class="side-meta">
+                        <span><i class="status-dot"></i><span id="saveStatus">未载入项目</span></span>
+                        <span id="countText">0 条</span>
+                    </div>
+                </div>
+                <div class="side-scroll">
+                    <div class="annotation-list" id="annotationList"></div>
+                </div>
+                <div class="editor" id="editor"></div>
+            </aside>
+        </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+        const STORAGE_KEY = "html-annotation-tool.current-project";
+        const TYPES = ["交互", "样式", "数据", "状态", "疑问"];
+
+        const state = {
+            mode: "browse",
+            html: "",
+            fileName: "",
+            annotations: [],
+            selectedId: null,
+            draftRect: null,
+            pointerStart: null,
+            scrollX: 0,
+            scrollY: 0,
+            saveTimer: null,
+            frameObserver: null,
+            frameVisibilityTimer: null,
+            frameRenderPending: false
+        };
+
+        const els = {
+            htmlInput: document.getElementById("htmlInput"),
+            emptyHtmlInput: document.getElementById("emptyHtmlInput"),
+            projectInput: document.getElementById("projectInput"),
+            exportProjectBtn: document.getElementById("exportProjectBtn"),
+            exportHtmlBtn: document.getElementById("exportHtmlBtn"),
+            restoreDraftBtn: document.getElementById("restoreDraftBtn"),
+            browseModeBtn: document.getElementById("browseModeBtn"),
+            annotateModeBtn: document.getElementById("annotateModeBtn"),
+            projectName: document.getElementById("projectName"),
+            modeHint: document.getElementById("modeHint"),
+            frame: document.getElementById("prototypeFrame"),
+            frameShell: document.getElementById("frameShell"),
+            layer: document.getElementById("annotationLayer"),
+            emptyState: document.getElementById("emptyState"),
+            annotationList: document.getElementById("annotationList"),
+            editor: document.getElementById("editor"),
+            saveStatus: document.getElementById("saveStatus"),
+            countText: document.getElementById("countText"),
+            toast: document.getElementById("toast")
+        };
+
+        function uid() {
+            return "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function showToast(message) {
+            els.toast.textContent = message;
+            els.toast.classList.add("show");
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => els.toast.classList.remove("show"), 2200);
+        }
+
+        function setMode(mode) {
+            state.mode = mode;
+            const annotating = mode === "annotate";
+            els.browseModeBtn.classList.toggle("active", !annotating);
+            els.annotateModeBtn.classList.toggle("active", annotating);
+            els.layer.classList.toggle("annotating", annotating);
+            els.modeHint.textContent = annotating
+                ? "标注模式：点击打点，拖拽框选区域"
+                : "浏览模式：可以正常操作原型";
+            renderAnnotations();
+        }
+
+        function getProject() {
+            return {
+                version: 1,
+                fileName: state.fileName,
+                html: state.html,
+                annotations: state.annotations,
+                updatedAt: new Date().toISOString()
+            };
+        }
+
+        function scheduleSave() {
+            if (!state.html) {
+                return;
+            }
+            els.saveStatus.textContent = "保存中";
+            clearTimeout(state.saveTimer);
+            state.saveTimer = setTimeout(() => {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(getProject()));
+                    els.saveStatus.textContent = "已自动保存";
+                } catch (error) {
+                    els.saveStatus.textContent = "自动保存失败";
+                    showToast("浏览器本地空间不足，请导出项目 JSON 备份");
+                }
+            }, 220);
+        }
+
+        function loadProject(project, message) {
+            if (!project || typeof project.html !== "string") {
+                showToast("项目文件格式不正确");
+                return;
+            }
+            state.html = project.html;
+            state.fileName = project.fileName || "未命名原型.html";
+            state.annotations = Array.isArray(project.annotations) ? project.annotations : [];
+            state.selectedId = state.annotations[0]?.id || null;
+            state.scrollX = 0;
+            state.scrollY = 0;
+            els.frame.srcdoc = state.html;
+            els.emptyState.style.display = "none";
+            els.projectName.textContent = state.fileName;
+            els.exportProjectBtn.disabled = false;
+            els.exportHtmlBtn.disabled = false;
+            setMode("browse");
+            renderAll();
+            scheduleSave();
+            showToast(message || "项目已载入");
+        }
+
+        function readFile(file, callback) {
+            const reader = new FileReader();
+            reader.onload = () => callback(String(reader.result || ""));
+            reader.onerror = () => showToast("文件读取失败");
+            reader.readAsText(file);
+        }
+
+        function importHtml(file) {
+            if (!file) {
+                return;
+            }
+            readFile(file, html => {
+                loadProject({
+                    fileName: file.name,
+                    html,
+                    annotations: []
+                }, "HTML 原型已导入");
+            });
+        }
+
+        function importProject(file) {
+            if (!file) {
+                return;
+            }
+            readFile(file, content => {
+                try {
+                    loadProject(JSON.parse(content), "项目 JSON 已导入");
+                } catch (error) {
+                    showToast("项目 JSON 解析失败");
+                }
+            });
+        }
+
+        function restoreDraft() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (!saved) {
+                showToast("没有找到本地草稿");
+                return;
+            }
+            try {
+                loadProject(JSON.parse(saved), "已恢复本地草稿");
+            } catch (error) {
+                showToast("本地草稿已损坏");
+            }
+        }
+
+        function downloadText(fileName, text, type) {
+            const blob = new Blob([text], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function baseName(name) {
+            return (name || "原型").replace(/\.[^.]+$/, "");
+        }
+
+        function exportProject() {
+            if (!state.html) {
+                return;
+            }
+            downloadText(baseName(state.fileName) + "-标注项目.json", JSON.stringify(getProject(), null, 2), "application/json;charset=utf-8");
+            showToast("项目 JSON 已导出");
+        }
+
+        function exportReadonlyHtml() {
+            if (!state.html) {
+                return;
+            }
+            const data = JSON.stringify(getReadonlyProject()).replace(/<\//g, "<\\/");
+            const doc = buildEmbeddedReadonlyHtml(data);
+            downloadText(baseName(state.fileName) + "-研发标注版.html", doc, "text/html;charset=utf-8");
+            showToast("只读标注 HTML 已导出");
+        }
+
+        function getReadonlyProject() {
+            return {
+                ...getProject(),
+                annotations: state.annotations.map(annotationForReadonlyExport)
+            };
+        }
+
+        function annotationForReadonlyExport(annotation) {
+            const note = { ...annotation };
+            const doc = els.frame.contentDocument;
+            const win = getFrameWindow();
+            if (!doc || !win || !note.anchorPath) {
+                return note;
+            }
+            let source = null;
+            try {
+                source = doc.querySelector(note.anchorPath);
+            } catch (error) {
+                source = null;
+            }
+            if (!source || !isElementVisible(source, doc, win)) {
+                return note;
+            }
+
+            const rect = source.getBoundingClientRect();
+            if (!rect.width || !rect.height) {
+                return note;
+            }
+
+            const isViewport = note.positionMode === "viewport";
+            note.anchorRect = {
+                left: rect.left + (isViewport ? 0 : win.scrollX),
+                top: rect.top + (isViewport ? 0 : win.scrollY),
+                width: rect.width,
+                height: rect.height
+            };
+            note.anchorRectMode = isViewport ? "viewport" : "document";
+            note.anchorScrollX = win.scrollX || 0;
+            note.anchorScrollY = win.scrollY || 0;
+            note.surfaceKey = note.surfaceKey || surfaceKeyForElement(source, doc, win);
+            note.pageContext = note.pageContext || pageContextForElement(source, doc, win);
+            return note;
+        }
+
+        function buildEmbeddedReadonlyHtml(serializedProject) {
+            const project = JSON.parse(serializedProject);
+            const html = project.html || "";
+            const annotations = Array.isArray(project.annotations) ? project.annotations : [];
+            if (!annotations.length) {
+                return html;
+            }
+
+            const payload = JSON.stringify({ annotations }).replace(/</g, "\\u003c");
+            const style = `
+<style id="html-annotation-export-style">
+    #html-annotation-export-layer {
+        all: initial;
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: visible;
+        pointer-events: none;
+        contain: layout style;
+        z-index: 2147483646;
+    }
+    .html-annotation-export-pin {
+        all: initial;
+        box-sizing: border-box;
+        position: fixed;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 2px solid #ffffff;
+        background: #e34b31;
+        color: #ffffff;
+        font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+        box-shadow: 0 0 0 2px #171717, 3px 3px 0 rgba(23, 23, 23, 0.22);
+        cursor: help;
+        pointer-events: auto;
+        transform: translate(-50%, -50%);
+        z-index: 2147483647;
+    }
+    .html-annotation-export-pin:hover,
+    .html-annotation-export-pin:focus {
+        background: #0e8f7b;
+        outline: none;
+    }
+    .html-annotation-export-pin.html-annotation-export-hidden,
+    .html-annotation-export-box.html-annotation-export-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+    .html-annotation-export-box {
+        all: initial;
+        box-sizing: border-box;
+        position: fixed;
+        border: 2px solid rgba(227, 75, 49, 0.92);
+        background: rgba(227, 75, 49, 0.08);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+        pointer-events: none;
+        z-index: 2147483645;
+    }
+    #html-annotation-export-tooltip {
+        all: initial;
+        box-sizing: border-box;
+        position: fixed;
+        left: 0;
+        top: 0;
+        max-width: min(360px, calc(100vw - 24px));
+        min-width: 220px;
+        padding: 12px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(23, 23, 23, 0.96);
+        color: #ffffff;
+        font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        font-size: 13px;
+        line-height: 1.65;
+        box-shadow: 0 16px 38px rgba(23, 23, 23, 0.28);
+        opacity: 0;
+        transform: translate(-50%, 6px);
+        transition: opacity 120ms ease, transform 120ms ease;
+        pointer-events: none;
+        z-index: 2147483647;
+    }
+    #html-annotation-export-tooltip.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+    #html-annotation-export-tooltip .html-annotation-export-meta {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        margin-bottom: 7px;
+        background: #ffffff;
+        color: #171717;
+        font-size: 12px;
+        font-weight: 800;
+    }
+    #html-annotation-export-tooltip .html-annotation-export-title {
+        display: block;
+        margin-bottom: 5px;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 800;
+    }
+    #html-annotation-export-tooltip .html-annotation-export-desc {
+        color: rgba(255, 255, 255, 0.82);
+        white-space: normal;
+        word-break: break-word;
+    }
+</style>`;
+            const script = "<scr" + "ipt id=\"html-annotation-export-script\">window.__HTML_ANNOTATION_EXPORT__=" + payload + ";\n(" + renderEmbeddedReadonlyAnnotations.toString() + ")();<" + "/scr" + "ipt>";
+            return injectIntoOriginalHtml(html, "\n" + style + "\n" + script + "\n");
+        }
+
+        function injectIntoOriginalHtml(html, injection) {
+            const lower = html.toLowerCase();
+            const bodyClose = lower.lastIndexOf("</body>");
+            if (bodyClose !== -1) {
+                return html.slice(0, bodyClose) + injection + html.slice(bodyClose);
+            }
+            const htmlClose = lower.lastIndexOf("</html>");
+            if (htmlClose !== -1) {
+                return html.slice(0, htmlClose) + injection + html.slice(htmlClose);
+            }
+            return html + injection;
+        }
+
+        function renderEmbeddedReadonlyAnnotations() {
+            const data = window.__HTML_ANNOTATION_EXPORT__ || { annotations: [] };
+            const annotations = Array.isArray(data.annotations) ? data.annotations : [];
+            const host = document.body || document.documentElement;
+            const layer = document.createElement("div");
+            const tooltip = document.createElement("div");
+
+            layer.id = "html-annotation-export-layer";
+            tooltip.id = "html-annotation-export-tooltip";
+            host.appendChild(layer);
+            host.appendChild(tooltip);
+
+            function escapeHtml(value) {
+                return String(value || "").replace(/[&<>"']/g, function (char) {
+                    return {
+                        "&": "&amp;",
+                        "<": "&lt;",
+                        ">": "&gt;",
+                        "\"": "&quot;",
+                        "'": "&#039;"
+                    }[char];
+                });
+            }
+
+            function cssPosition(note) {
+                return "fixed";
+            }
+
+            function sourceElement(note) {
+                if (!note.anchorPath) {
+                    return null;
+                }
+                try {
+                    return document.querySelector(note.anchorPath);
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            function noteLayout(note) {
+                const source = sourceElement(note);
+                const x = Number(note.x || 0);
+                const y = Number(note.y || 0);
+                if (!source) {
+                    return {
+                        docX: x,
+                        docY: y,
+                        viewportX: x - (note.positionMode === "viewport" ? 0 : window.scrollX),
+                        viewportY: y - (note.positionMode === "viewport" ? 0 : window.scrollY),
+                        source: null,
+                        sourceRect: null
+                    };
+                }
+
+                const rect = source.getBoundingClientRect();
+                const storedRect = note.anchorRect || {};
+                const storedLeft = Number(storedRect.left);
+                const storedTop = Number(storedRect.top);
+                const storedWidth = Number(storedRect.width);
+                const storedHeight = Number(storedRect.height);
+
+                const validStored = Number.isFinite(storedLeft) && Number.isFinite(storedTop) && storedWidth > 0 && storedHeight > 0;
+                const anchorRectMode = note.anchorRectMode || "document";
+                const storedViewportLeft = anchorRectMode === "viewport" ? storedLeft : storedLeft - Number(note.anchorScrollX || 0);
+                const storedViewportTop = anchorRectMode === "viewport" ? storedTop : storedTop - Number(note.anchorScrollY || 0);
+                const storedPointX = note.positionMode === "viewport" ? x : x - Number(note.anchorScrollX || window.scrollX || 0);
+                const storedPointY = note.positionMode === "viewport" ? y : y - Number(note.anchorScrollY || window.scrollY || 0);
+                const relX = validStored ? (storedPointX - storedViewportLeft) / storedWidth : 0.5;
+                const relY = validStored ? (storedPointY - storedViewportTop) / storedHeight : 0.5;
+                const clampedX = Math.max(0, Math.min(1, relX));
+                const clampedY = Math.max(0, Math.min(1, relY));
+                const viewportX = rect.left + rect.width * clampedX;
+                const viewportY = rect.top + rect.height * clampedY;
+
+                return {
+                    docX: viewportX + window.scrollX,
+                    docY: viewportY + window.scrollY,
+                    viewportX: viewportX,
+                    viewportY: viewportY,
+                    source: source,
+                    sourceRect: rect
+                };
+            }
+
+            function viewportPoint(note) {
+                const layout = noteLayout(note);
+                return {
+                    x: layout.viewportX,
+                    y: layout.viewportY
+                };
+            }
+
+            function cssPathForElement(element) {
+                if (!element || element === document.body || element === document.documentElement) {
+                    return "";
+                }
+                if (element.id && !/\s/.test(element.id)) {
+                    return "#" + CSS.escape(element.id);
+                }
+                const parts = [];
+                let node = element;
+                while (node && node.nodeType === 1 && node !== document.body && node !== document.documentElement && parts.length < 6) {
+                    let part = node.tagName.toLowerCase();
+                    const classList = Array.from(node.classList || []).slice(0, 3);
+                    if (classList.length) {
+                        part += "." + classList.map(function (name) { return CSS.escape(name); }).join(".");
+                    }
+                    const parent = node.parentElement;
+                    if (parent) {
+                        const siblings = Array.from(parent.children).filter(function (child) { return child.tagName === node.tagName; });
+                        if (siblings.length > 1) {
+                            part += ":nth-of-type(" + (siblings.indexOf(node) + 1) + ")";
+                        }
+                    }
+                    parts.unshift(part);
+                    node = parent;
+                }
+                return parts.join(" > ");
+            }
+
+            function surfaceKeyForElement(element) {
+                const root = overlayRootForElement(element);
+                return root ? (cssPathForElement(root) || root.tagName.toLowerCase()) : "";
+            }
+
+            function isOverlayCandidate(element) {
+                if (!element || element === document.body || element === document.documentElement || isAnnotationExportNode(element)) {
+                    return false;
+                }
+                const style = window.getComputedStyle(element);
+                const role = (element.getAttribute("role") || "").toLowerCase();
+                const name = [
+                    element.id || "",
+                    element.className || "",
+                    role,
+                    element.getAttribute("aria-label") || "",
+                    element.getAttribute("data-state") || ""
+                ].join(" ").toLowerCase();
+                const zIndex = Number.parseInt(style.zIndex, 10);
+                const rect = element.getBoundingClientRect();
+                const isOverlayName = /modal|dialog|drawer|popup|popover|overlay|mask|shade|sheet|layer|toast|tooltip|dropdown|menu|backdrop|scrim/.test(name);
+                const isOverlayRole = /dialog|alertdialog|menu|listbox/.test(role);
+                const isOverlayPosition = (style.position === "fixed" || style.position === "absolute" || style.position === "sticky") &&
+                    Number.isFinite(zIndex) &&
+                    zIndex >= 20 &&
+                    rect.width >= window.innerWidth * 0.18 &&
+                    rect.height >= window.innerHeight * 0.14;
+                return element.tagName === "DIALOG" || element.getAttribute("aria-modal") === "true" || element.hasAttribute("popover") || isOverlayName || isOverlayRole || isOverlayPosition;
+            }
+
+            function overlayRootForElement(element) {
+                let node = element;
+                let match = null;
+                while (node && node.nodeType === 1 && node !== document.documentElement) {
+                    if (isOverlayCandidate(node)) {
+                        match = node;
+                    }
+                    node = node.parentElement;
+                }
+                return match;
+            }
+
+            function currentOverlayRoot() {
+                const width = window.innerWidth || document.documentElement.clientWidth || 0;
+                const height = window.innerHeight || document.documentElement.clientHeight || 0;
+                if (!width || !height) {
+                    return null;
+                }
+                const points = [
+                    [width / 2, height / 2],
+                    [width / 2, height * 0.25],
+                    [width / 2, height * 0.75],
+                    [width * 0.25, height / 2],
+                    [width * 0.75, height / 2]
+                ];
+                for (const point of points) {
+                    const stack = document.elementsFromPoint ? document.elementsFromPoint(point[0], point[1]) : [document.elementFromPoint(point[0], point[1])];
+                    for (const element of stack) {
+                        if (!element || isAnnotationExportNode(element)) {
+                            continue;
+                        }
+                        const root = overlayRootForElement(element);
+                        if (root && isElementVisible(root)) {
+                            return root;
+                        }
+                    }
+                }
+                return null;
+            }
+
+            function overlayContextForRoot(root) {
+                if (!root) {
+                    return null;
+                }
+                return {
+                    path: cssPathForElement(root),
+                    fingerprint: visibleTextFingerprint(root)
+                };
+            }
+
+            function overlayContextForElement(element) {
+                return overlayContextForRoot(overlayRootForElement(element));
+            }
+
+            function currentOverlayContext() {
+                return overlayContextForRoot(currentOverlayRoot());
+            }
+
+            function overlayContextMatches(expected, current) {
+                if (!expected) {
+                    return !current;
+                }
+                if (!current) {
+                    return false;
+                }
+                if (expected.path && current.path && expected.path !== current.path) {
+                    return false;
+                }
+                return !expected.fingerprint || !current.fingerprint || expected.fingerprint === current.fingerprint;
+            }
+
+            function pageContextOverlayMatches(context) {
+                const current = currentOverlayContext();
+                if (!context) {
+                    return !current;
+                }
+                if (Object.prototype.hasOwnProperty.call(context, "overlay")) {
+                    return overlayContextMatches(context.overlay || null, current);
+                }
+                if (!current) {
+                    return true;
+                }
+                return overlayContextMatches({
+                    path: context.rootPath || "",
+                    fingerprint: context.rootFingerprint || ""
+                }, current);
+            }
+
+            function routeKey() {
+                return window.location.hash || "";
+            }
+
+            function normalizeText(value) {
+                return String(value || "").replace(/\s+/g, " ").trim();
+            }
+
+            function textHash(value) {
+                const text = normalizeText(value).slice(0, 1200);
+                let hash = 0;
+                for (let i = 0; i < text.length; i += 1) {
+                    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+                }
+                return hash.toString(36);
+            }
+
+            function isAnnotationExportNode(element) {
+                return Boolean(element && element.closest && element.closest("#html-annotation-export-layer, #html-annotation-export-tooltip, #html-annotation-export-script, #html-annotation-export-style"));
+            }
+
+            function isElementVisible(element) {
+                if (!element || !element.isConnected) {
+                    return false;
+                }
+                if (element === document.body || element === document.documentElement) {
+                    return true;
+                }
+                let node = element;
+                while (node && node.nodeType === 1 && node !== document.documentElement) {
+                    if (node.hidden || node.getAttribute("aria-hidden") === "true") {
+                        return false;
+                    }
+                    const style = window.getComputedStyle(node);
+                    if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0") {
+                        return false;
+                    }
+                    node = node.parentElement;
+                }
+                return Array.from(element.getClientRects()).some(function (rect) {
+                    return rect.width > 0 && rect.height > 0;
+                });
+            }
+
+            function visibleTextFingerprint(root) {
+                if (!root) {
+                    return "";
+                }
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                    acceptNode: function (node) {
+                        const parent = node.parentElement;
+                        if (!parent || isAnnotationExportNode(parent)) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        const tag = parent.tagName;
+                        if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT" || !isElementVisible(parent)) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        return normalizeText(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                    }
+                });
+                let text = "";
+                let node = walker.nextNode();
+                while (node && text.length < 1200) {
+                    text += " " + node.nodeValue;
+                    node = walker.nextNode();
+                }
+                return textHash(text);
+            }
+
+            function pageRootForElement(element) {
+                if (!element || element === document.documentElement) {
+                    return document.body || document.documentElement;
+                }
+                const overlay = overlayRootForElement(element);
+                if (overlay) {
+                    return overlay;
+                }
+                let candidate = null;
+                let node = element;
+                while (node && node.nodeType === 1 && node !== document.documentElement) {
+                    const role = (node.getAttribute("role") || "").toLowerCase();
+                    const name = [
+                        node.id || "",
+                        node.className || "",
+                        node.getAttribute("data-page") || "",
+                        node.getAttribute("data-screen") || "",
+                        node.getAttribute("data-view") || "",
+                        node.getAttribute("data-route") || ""
+                    ].join(" ").toLowerCase();
+                    const isSemanticRoot = node.tagName === "MAIN" || node.tagName === "SECTION" || node.tagName === "ARTICLE" || role === "main";
+                    const isNamedRoot = /(^|[\s_-])(page|screen|view|route|scene|panel|content|detail|list|home|dashboard)([\s_-]|$)/.test(name);
+                    if ((isSemanticRoot || isNamedRoot) && isElementVisible(node)) {
+                        candidate = node;
+                    }
+                    node = node.parentElement;
+                }
+                if (candidate) {
+                    return candidate;
+                }
+                let top = element;
+                while (top && top.parentElement && top.parentElement !== document.body) {
+                    top = top.parentElement;
+                }
+                return (top && top !== document.documentElement && isElementVisible(top)) ? top : (document.body || document.documentElement);
+            }
+
+            function pageContextForElement(element) {
+                const root = pageRootForElement(element);
+                return {
+                    route: routeKey(),
+                    rootPath: cssPathForElement(root),
+                    rootFingerprint: visibleTextFingerprint(root),
+                    overlay: overlayContextForElement(element)
+                };
+            }
+
+            function pageContextMatches(context) {
+                if (!context) {
+                    return pageContextOverlayMatches(context);
+                }
+                if (context.route && context.route !== routeKey()) {
+                    return false;
+                }
+                if (!pageContextOverlayMatches(context)) {
+                    return false;
+                }
+                let root = document.body || document.documentElement;
+                if (context.rootPath) {
+                    try {
+                        root = document.querySelector(context.rootPath);
+                    } catch (error) {
+                        root = null;
+                    }
+                }
+                if (!root || !isElementVisible(root)) {
+                    return false;
+                }
+                return !context.rootFingerprint || visibleTextFingerprint(root) === context.rootFingerprint;
+            }
+
+            function elementAtNote(note) {
+                const point = viewportPoint(note);
+                if (point.x < 0 || point.y < 0 || point.x > window.innerWidth || point.y > window.innerHeight) {
+                    return null;
+                }
+                const hidden = [];
+                layer.querySelectorAll(".html-annotation-export-pin, .html-annotation-export-box").forEach(function (node) {
+                    hidden.push([node, node.style.pointerEvents, node.style.visibility]);
+                    node.style.pointerEvents = "none";
+                    node.style.visibility = "hidden";
+                });
+                tooltip.style.pointerEvents = "none";
+                tooltip.style.visibility = "hidden";
+                const found = document.elementFromPoint(point.x, point.y);
+                hidden.forEach(function (entry) {
+                    entry[0].style.pointerEvents = entry[1];
+                    entry[0].style.visibility = entry[2];
+                });
+                tooltip.style.visibility = "";
+                return found;
+            }
+
+            function isCovered(note) {
+                if (!pageContextMatches(note.pageContext)) {
+                    return true;
+                }
+                if (!note.anchorPath) {
+                    return false;
+                }
+                const layout = noteLayout(note);
+                const source = layout.source;
+                if (!source || !isElementVisible(source)) {
+                    return true;
+                }
+                const top = elementAtNote(note);
+                if (!top) {
+                    return false;
+                }
+                if (top === source || source.contains(top) || top.contains(source)) {
+                    return false;
+                }
+                const sourceSurface = note.surfaceKey || surfaceKeyForElement(source);
+                const topSurface = surfaceKeyForElement(top);
+                if (topSurface && topSurface !== sourceSurface) {
+                    return true;
+                }
+                return pageRootForElement(source) !== pageRootForElement(top);
+            }
+
+            function place(node, note, isPoint) {
+                node.style.position = cssPosition(note);
+                const layout = noteLayout(note);
+                node.style.left = layout.viewportX + "px";
+                node.style.top = layout.viewportY + "px";
+                if (isPoint) {
+                    node.style.transform = "translate(-50%, -50%)";
+                }
+            }
+
+            function placeEntry(entry) {
+                place(entry.pin, entry.note, true);
+                if (entry.box) {
+                    place(entry.box, entry.note, false);
+                    const layout = noteLayout(entry.note);
+                    const storedRect = entry.note.anchorRect || {};
+                    const storedWidth = Number(storedRect.width);
+                    const storedHeight = Number(storedRect.height);
+                    const scaleX = storedWidth > 0 && layout.sourceRect ? layout.sourceRect.width / storedWidth : 1;
+                    const scaleY = storedHeight > 0 && layout.sourceRect ? layout.sourceRect.height / storedHeight : 1;
+                    entry.box.style.width = Math.max(0, Number(entry.note.width || 0) * scaleX) + "px";
+                    entry.box.style.height = Math.max(0, Number(entry.note.height || 0) * scaleY) + "px";
+                }
+            }
+
+            let activeTooltipAnchor = null;
+
+            function showTooltip(note, index, anchor) {
+                const title = note.title || "未命名标注";
+                const type = note.type || "交互";
+                const desc = note.description || "暂无说明";
+                activeTooltipAnchor = anchor;
+                tooltip.innerHTML =
+                    '<span class="html-annotation-export-meta">#' + (index + 1) + " · " + escapeHtml(type) + "</span>" +
+                    '<strong class="html-annotation-export-title">' + escapeHtml(title) + "</strong>" +
+                    '<div class="html-annotation-export-desc">' + escapeHtml(desc).replace(/\n/g, "<br>") + "</div>";
+                tooltip.classList.add("show");
+                positionTooltip(anchor);
+            }
+
+            function positionTooltip(anchor) {
+                const rect = anchor.getBoundingClientRect();
+                const maxWidth = Math.min(360, window.innerWidth - 24);
+                tooltip.style.maxWidth = maxWidth + "px";
+
+                let left = rect.left + rect.width / 2;
+                left = Math.max(12 + maxWidth / 2, Math.min(window.innerWidth - 12 - maxWidth / 2, left));
+
+                let top = rect.bottom + 10;
+                const height = tooltip.offsetHeight || 120;
+                if (top + height > window.innerHeight - 12) {
+                    top = Math.max(12, rect.top - height - 10);
+                }
+
+                tooltip.style.left = left + "px";
+                tooltip.style.top = top + "px";
+            }
+
+            function hideTooltip() {
+                activeTooltipAnchor = null;
+                tooltip.classList.remove("show");
+            }
+
+            function bindTooltip(node, note, index) {
+                node.setAttribute("aria-label", "#" + (index + 1) + " " + (note.type || "交互") + "：" + (note.title || "未命名标注"));
+                node.addEventListener("mouseenter", function () { showTooltip(note, index, node); });
+                node.addEventListener("focus", function () { showTooltip(note, index, node); });
+                node.addEventListener("mouseleave", hideTooltip);
+                node.addEventListener("blur", hideTooltip);
+            }
+
+            const entries = [];
+            annotations.forEach(function (note, index) {
+                let box = null;
+                if (note.shape === "rect") {
+                    box = document.createElement("div");
+                    box.className = "html-annotation-export-box";
+                    place(box, note, false);
+                    box.style.width = Math.max(0, Number(note.width || 0)) + "px";
+                    box.style.height = Math.max(0, Number(note.height || 0)) + "px";
+                    layer.appendChild(box);
+                }
+
+                const pin = document.createElement("button");
+                pin.type = "button";
+                pin.className = "html-annotation-export-pin";
+                pin.textContent = index + 1;
+                place(pin, note, true);
+                bindTooltip(pin, note, index);
+                layer.appendChild(pin);
+                entries.push({ note: note, pin: pin, box: box });
+            });
+
+            function refreshVisibility() {
+                entries.forEach(function (entry) {
+                    placeEntry(entry);
+                    const covered = isCovered(entry.note);
+                    entry.pin.classList.toggle("html-annotation-export-hidden", covered);
+                    if (entry.box) {
+                        entry.box.classList.toggle("html-annotation-export-hidden", covered);
+                    }
+                    if (covered && (document.activeElement === entry.pin || activeTooltipAnchor === entry.pin)) {
+                        entry.pin.blur();
+                        hideTooltip();
+                    }
+                });
+            }
+
+            let refreshTimer = 0;
+            function scheduleRefresh() {
+                window.clearTimeout(refreshTimer);
+                refreshTimer = window.setTimeout(refreshVisibility, 80);
+            }
+
+            refreshVisibility();
+            window.addEventListener("scroll", scheduleRefresh, true);
+            window.addEventListener("resize", scheduleRefresh);
+            document.addEventListener("click", scheduleRefresh, true);
+            document.addEventListener("input", scheduleRefresh, true);
+            document.addEventListener("transitionend", scheduleRefresh, true);
+            document.addEventListener("animationend", scheduleRefresh, true);
+            if (window.MutationObserver) {
+                new MutationObserver(scheduleRefresh).observe(document.documentElement, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true,
+                    attributes: true,
+                    attributeFilter: ["class", "style", "open", "hidden", "aria-hidden"]
+                });
+            }
+        }
+
+        function getFrameWindow() {
+            return els.frame.contentWindow;
+        }
+
+        function updateScrollState() {
+            const win = getFrameWindow();
+            if (!win) {
+                return;
+            }
+            state.scrollX = win.scrollX || 0;
+            state.scrollY = win.scrollY || 0;
+            renderAnnotations();
+        }
+
+        function scheduleFrameVisibilityRender() {
+            if (state.frameRenderPending) {
+                return;
+            }
+            state.frameRenderPending = true;
+            requestAnimationFrame(() => {
+                state.frameRenderPending = false;
+                renderAnnotations();
+            });
+        }
+
+        function bindFrameScroll() {
+            const win = getFrameWindow();
+            const doc = els.frame.contentDocument;
+            if (!win) {
+                return;
+            }
+            if (state.frameObserver) {
+                state.frameObserver.disconnect();
+                state.frameObserver = null;
+            }
+            state.scrollX = win.scrollX || 0;
+            state.scrollY = win.scrollY || 0;
+            win.addEventListener("scroll", updateScrollState, { passive: true });
+            win.addEventListener("resize", updateScrollState);
+            win.document.addEventListener("click", scheduleFrameVisibilityRender, true);
+            win.document.addEventListener("input", scheduleFrameVisibilityRender, true);
+            win.document.addEventListener("transitionend", scheduleFrameVisibilityRender, true);
+            win.document.addEventListener("animationend", scheduleFrameVisibilityRender, true);
+            if (doc && win.MutationObserver) {
+                state.frameObserver = new win.MutationObserver(scheduleFrameVisibilityRender);
+                state.frameObserver.observe(doc.documentElement, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true,
+                    attributes: true,
+                    attributeFilter: ["class", "style", "open", "hidden", "aria-hidden"]
+                });
+            }
+            renderAnnotations();
+        }
+
+        function viewportPoint(event) {
+            const rect = els.layer.getBoundingClientRect();
+            return {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+        }
+
+        function isFloatingPoint(point) {
+            const doc = els.frame.contentDocument;
+            const win = getFrameWindow();
+            if (!doc || !win) {
+                return false;
+            }
+            let node = doc.elementFromPoint(point.x, point.y);
+            if (overlayRootForElement(node, doc, win)) {
+                return true;
+            }
+            while (node && node !== doc.documentElement) {
+                const position = win.getComputedStyle(node).position;
+                if (position === "fixed" || position === "sticky") {
+                    return true;
+                }
+                node = node.parentElement;
+            }
+            return false;
+        }
+
+        function cssPathForElement(element, doc) {
+            if (!element || element === doc.body || element === doc.documentElement) {
+                return "";
+            }
+            if (element.id && !/\s/.test(element.id)) {
+                return "#" + CSS.escape(element.id);
+            }
+            const parts = [];
+            let node = element;
+            while (node && node.nodeType === 1 && node !== doc.body && node !== doc.documentElement && parts.length < 6) {
+                let part = node.tagName.toLowerCase();
+                const classList = Array.from(node.classList || []).slice(0, 3);
+                if (classList.length) {
+                    part += "." + classList.map(name => CSS.escape(name)).join(".");
+                }
+                const parent = node.parentElement;
+                if (parent) {
+                    const siblings = Array.from(parent.children).filter(child => child.tagName === node.tagName);
+                    if (siblings.length > 1) {
+                        part += ":nth-of-type(" + (siblings.indexOf(node) + 1) + ")";
+                    }
+                }
+                parts.unshift(part);
+                node = parent;
+            }
+            return parts.join(" > ");
+        }
+
+        function surfaceKeyForElement(element, doc, win) {
+            const root = overlayRootForElement(element, doc, win);
+            return root ? (cssPathForElement(root, doc) || root.tagName.toLowerCase()) : "";
+        }
+
+        function frameRouteKey(doc, win) {
+            return win.location.hash || "";
+        }
+
+        function normalizeText(value) {
+            return String(value || "").replace(/\s+/g, " ").trim();
+        }
+
+        function textHash(value) {
+            const text = normalizeText(value).slice(0, 1200);
+            let hash = 0;
+            for (let i = 0; i < text.length; i += 1) {
+                hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+            }
+            return hash.toString(36);
+        }
+
+        function isElementVisible(element, doc, win) {
+            if (!element || !element.isConnected) {
+                return false;
+            }
+            if (element === doc.body || element === doc.documentElement) {
+                return true;
+            }
+            let node = element;
+            while (node && node.nodeType === 1 && node !== doc.documentElement) {
+                if (node.hidden || node.getAttribute("aria-hidden") === "true") {
+                    return false;
+                }
+                const style = win.getComputedStyle(node);
+                if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0") {
+                    return false;
+                }
+                node = node.parentElement;
+            }
+            return Array.from(element.getClientRects()).some(rect => rect.width > 0 && rect.height > 0);
+        }
+
+        function visibleTextFingerprint(root, doc, win) {
+            if (!root) {
+                return "";
+            }
+            const walker = doc.createTreeWalker(root, win.NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    const parent = node.parentElement;
+                    if (!parent) {
+                        return win.NodeFilter.FILTER_REJECT;
+                    }
+                    const tag = parent.tagName;
+                    if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT" || !isElementVisible(parent, doc, win)) {
+                        return win.NodeFilter.FILTER_REJECT;
+                    }
+                    return normalizeText(node.nodeValue) ? win.NodeFilter.FILTER_ACCEPT : win.NodeFilter.FILTER_REJECT;
+                }
+            });
+            let text = "";
+            let node = walker.nextNode();
+            while (node && text.length < 1200) {
+                text += " " + node.nodeValue;
+                node = walker.nextNode();
+            }
+            return textHash(text);
+        }
+
+        function isOverlayCandidate(element, doc, win) {
+            if (!element || element === doc.body || element === doc.documentElement) {
+                return false;
+            }
+            const style = win.getComputedStyle(element);
+            const role = (element.getAttribute("role") || "").toLowerCase();
+            const name = [
+                element.id || "",
+                element.className || "",
+                role,
+                element.getAttribute("aria-label") || "",
+                element.getAttribute("data-state") || ""
+            ].join(" ").toLowerCase();
+            const zIndex = Number.parseInt(style.zIndex, 10);
+            const rect = element.getBoundingClientRect();
+            const isOverlayName = /modal|dialog|drawer|popup|popover|overlay|mask|shade|sheet|layer|toast|tooltip|dropdown|menu|backdrop|scrim/.test(name);
+            const isOverlayRole = /dialog|alertdialog|menu|listbox/.test(role);
+            const isOverlayPosition = (style.position === "fixed" || style.position === "absolute" || style.position === "sticky") &&
+                Number.isFinite(zIndex) &&
+                zIndex >= 20 &&
+                rect.width >= win.innerWidth * 0.18 &&
+                rect.height >= win.innerHeight * 0.14;
+            return element.tagName === "DIALOG" || element.getAttribute("aria-modal") === "true" || element.hasAttribute("popover") || isOverlayName || isOverlayRole || isOverlayPosition;
+        }
+
+        function overlayRootForElement(element, doc, win) {
+            let node = element;
+            let match = null;
+            while (node && node.nodeType === 1 && node !== doc.documentElement) {
+                if (isOverlayCandidate(node, doc, win)) {
+                    match = node;
+                }
+                node = node.parentElement;
+            }
+            return match;
+        }
+
+        function currentOverlayRoot(doc, win) {
+            const width = win.innerWidth || doc.documentElement.clientWidth || 0;
+            const height = win.innerHeight || doc.documentElement.clientHeight || 0;
+            if (!width || !height) {
+                return null;
+            }
+            const points = [
+                [width / 2, height / 2],
+                [width / 2, height * 0.25],
+                [width / 2, height * 0.75],
+                [width * 0.25, height / 2],
+                [width * 0.75, height / 2]
+            ];
+            for (const point of points) {
+                const stack = doc.elementsFromPoint ? doc.elementsFromPoint(point[0], point[1]) : [doc.elementFromPoint(point[0], point[1])];
+                for (const element of stack) {
+                    const root = overlayRootForElement(element, doc, win);
+                    if (root && isElementVisible(root, doc, win)) {
+                        return root;
+                    }
+                }
+            }
+            return null;
+        }
+
+        function overlayContextForRoot(root, doc, win) {
+            if (!root) {
+                return null;
+            }
+            return {
+                path: cssPathForElement(root, doc),
+                fingerprint: visibleTextFingerprint(root, doc, win)
+            };
+        }
+
+        function overlayContextForElement(element, doc, win) {
+            return overlayContextForRoot(overlayRootForElement(element, doc, win), doc, win);
+        }
+
+        function currentOverlayContext(doc, win) {
+            return overlayContextForRoot(currentOverlayRoot(doc, win), doc, win);
+        }
+
+        function overlayContextMatches(expected, current) {
+            if (!expected) {
+                return !current;
+            }
+            if (!current) {
+                return false;
+            }
+            if (expected.path && current.path && expected.path !== current.path) {
+                return false;
+            }
+            return !expected.fingerprint || !current.fingerprint || expected.fingerprint === current.fingerprint;
+        }
+
+        function pageContextOverlayMatches(context, doc, win) {
+            const current = currentOverlayContext(doc, win);
+            if (!context) {
+                return !current;
+            }
+            if (Object.prototype.hasOwnProperty.call(context, "overlay")) {
+                return overlayContextMatches(context.overlay || null, current);
+            }
+            if (!current) {
+                return true;
+            }
+            return overlayContextMatches({
+                path: context.rootPath || "",
+                fingerprint: context.rootFingerprint || ""
+            }, current);
+        }
+
+        function pageRootForElement(element, doc, win) {
+            if (!element || element === doc.documentElement) {
+                return doc.body || doc.documentElement;
+            }
+            const overlay = overlayRootForElement(element, doc, win);
+            if (overlay) {
+                return overlay;
+            }
+            let candidate = null;
+            let node = element;
+            while (node && node.nodeType === 1 && node !== doc.documentElement) {
+                const role = (node.getAttribute("role") || "").toLowerCase();
+                const name = [
+                    node.id || "",
+                    node.className || "",
+                    node.getAttribute("data-page") || "",
+                    node.getAttribute("data-screen") || "",
+                    node.getAttribute("data-view") || "",
+                    node.getAttribute("data-route") || ""
+                ].join(" ").toLowerCase();
+                const isSemanticRoot = node.tagName === "MAIN" || node.tagName === "SECTION" || node.tagName === "ARTICLE" || role === "main";
+                const isNamedRoot = /(^|[\s_-])(page|screen|view|route|scene|panel|content|detail|list|home|dashboard)([\s_-]|$)/.test(name);
+                if ((isSemanticRoot || isNamedRoot) && isElementVisible(node, doc, win)) {
+                    candidate = node;
+                }
+                node = node.parentElement;
+            }
+            if (candidate) {
+                return candidate;
+            }
+            let top = element;
+            while (top && top.parentElement && top.parentElement !== doc.body) {
+                top = top.parentElement;
+            }
+            return (top && top !== doc.documentElement && isElementVisible(top, doc, win)) ? top : (doc.body || doc.documentElement);
+        }
+
+        function pageContextForElement(element, doc, win) {
+            const root = pageRootForElement(element, doc, win);
+            return {
+                route: frameRouteKey(doc, win),
+                rootPath: cssPathForElement(root, doc),
+                rootFingerprint: visibleTextFingerprint(root, doc, win),
+                overlay: overlayContextForElement(element, doc, win)
+            };
+        }
+
+        function pageContextMatches(annotation) {
+            const context = annotation.pageContext;
+            const doc = els.frame.contentDocument;
+            const win = getFrameWindow();
+            if (!doc || !win) {
+                return true;
+            }
+            if (!context) {
+                return pageContextOverlayMatches(context, doc, win);
+            }
+            if (context.route && context.route !== frameRouteKey(doc, win)) {
+                return false;
+            }
+            if (!pageContextOverlayMatches(context, doc, win)) {
+                return false;
+            }
+            let root = doc.body || doc.documentElement;
+            if (context.rootPath) {
+                try {
+                    root = doc.querySelector(context.rootPath);
+                } catch (error) {
+                    root = null;
+                }
+            }
+            if (!root || !isElementVisible(root, doc, win)) {
+                return false;
+            }
+            return !context.rootFingerprint || visibleTextFingerprint(root, doc, win) === context.rootFingerprint;
+        }
+
+        function annotationContextAtPoint(point) {
+            const doc = els.frame.contentDocument;
+            const win = getFrameWindow();
+            if (!doc || !win) {
+                return { anchorPath: "", surfaceKey: "", anchorRect: null, pageContext: null };
+            }
+            const element = doc.elementFromPoint(point.x, point.y);
+            const rect = element ? element.getBoundingClientRect() : null;
+            const floating = isFloatingPoint(point);
+            return {
+                anchorPath: cssPathForElement(element, doc),
+                surfaceKey: surfaceKeyForElement(element, doc, win),
+                pageContext: pageContextForElement(element, doc, win),
+                anchorRect: rect ? {
+                    left: rect.left + (floating ? 0 : win.scrollX),
+                    top: rect.top + (floating ? 0 : win.scrollY),
+                    width: rect.width,
+                    height: rect.height
+                } : null,
+                anchorRectMode: floating ? "viewport" : "document",
+                anchorScrollX: win.scrollX || 0,
+                anchorScrollY: win.scrollY || 0
+            };
+        }
+
+        function annotationPoint(event, positionMode) {
+            const point = viewportPoint(event);
+            const mode = positionMode || (isFloatingPoint(point) ? "viewport" : "document");
+            const context = annotationContextAtPoint(point);
+            return {
+                x: point.x + (mode === "viewport" ? 0 : state.scrollX),
+                y: point.y + (mode === "viewport" ? 0 : state.scrollY),
+                positionMode: mode,
+                anchorPath: context.anchorPath,
+                surfaceKey: context.surfaceKey,
+                pageContext: context.pageContext,
+                anchorRect: context.anchorRect,
+                anchorRectMode: context.anchorRectMode,
+                anchorScrollX: context.anchorScrollX,
+                anchorScrollY: context.anchorScrollY
+            };
+        }
+
+        function createAnnotationFromGesture(start, end) {
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const moved = Math.abs(dx) > 8 || Math.abs(dy) > 8;
+            const index = state.annotations.length + 1;
+            const positionMode = start.positionMode || "document";
+            const annotation = {
+                id: uid(),
+                type: "交互",
+                title: moved ? "区域标注 " + index : "点位标注 " + index,
+                description: "",
+                shape: moved ? "rect" : "point",
+                positionMode,
+                anchorPath: start.anchorPath || "",
+                surfaceKey: start.surfaceKey || "",
+                pageContext: start.pageContext || null,
+                anchorRect: start.anchorRect || null,
+                x: moved ? Math.min(start.x, end.x) : end.x,
+                y: moved ? Math.min(start.y, end.y) : end.y,
+                width: moved ? Math.max(24, Math.abs(dx)) : 0,
+                height: moved ? Math.max(24, Math.abs(dy)) : 0,
+                createdAt: new Date().toISOString()
+            };
+            state.annotations.push(annotation);
+            state.selectedId = annotation.id;
+            renderAll();
+            scheduleSave();
+            showToast(moved ? "已创建框选标注" : "已创建点位标注");
+        }
+
+        function handlePointerDown(event) {
+            if (state.mode !== "annotate" || !state.html || event.target.closest(".marker, .box-marker")) {
+                return;
+            }
+            event.preventDefault();
+            const start = annotationPoint(event);
+            state.pointerStart = start;
+            state.draftRect = {
+                x: start.x,
+                y: start.y,
+                width: 0,
+                height: 0,
+                positionMode: start.positionMode
+            };
+            els.layer.setPointerCapture(event.pointerId);
+            renderAnnotations();
+        }
+
+        function handlePointerMove(event) {
+            if (!state.pointerStart || state.mode !== "annotate") {
+                return;
+            }
+            const current = annotationPoint(event, state.pointerStart.positionMode);
+            state.draftRect = {
+                x: Math.min(state.pointerStart.x, current.x),
+                y: Math.min(state.pointerStart.y, current.y),
+                width: Math.abs(current.x - state.pointerStart.x),
+                height: Math.abs(current.y - state.pointerStart.y),
+                positionMode: state.pointerStart.positionMode
+            };
+            renderAnnotations();
+        }
+
+        function handlePointerUp(event) {
+            if (!state.pointerStart || state.mode !== "annotate") {
+                return;
+            }
+            const start = state.pointerStart;
+            const end = annotationPoint(event, start.positionMode);
+            state.pointerStart = null;
+            state.draftRect = null;
+            try {
+                els.layer.releasePointerCapture(event.pointerId);
+            } catch (error) {
+                // Pointer capture may already be released by the browser.
+            }
+            createAnnotationFromGesture(start, end);
+        }
+
+        function handleLayerWheel(event) {
+            if (state.mode !== "annotate") {
+                return;
+            }
+            const win = getFrameWindow();
+            if (!win) {
+                return;
+            }
+            event.preventDefault();
+            win.scrollBy({ left: event.deltaX, top: event.deltaY, behavior: "auto" });
+            requestAnimationFrame(updateScrollState);
+        }
+
+        function selectAnnotation(id, shouldScroll) {
+            state.selectedId = id;
+            if (shouldScroll) {
+                scrollFrameToAnnotation(id);
+            }
+            renderAll();
+        }
+
+        function scrollFrameToAnnotation(id) {
+            const annotation = state.annotations.find(item => item.id === id);
+            const win = getFrameWindow();
+            if (!annotation || !win) {
+                return;
+            }
+            const targetX = Math.max(0, annotation.x - 120);
+            const targetY = Math.max(0, annotation.y - 160);
+            if (annotation.positionMode === "viewport") {
+                return;
+            }
+            win.scrollTo({ left: targetX, top: targetY, behavior: "smooth" });
+            setTimeout(updateScrollState, 260);
+        }
+
+        function updateSelectedField(field, value) {
+            const annotation = state.annotations.find(item => item.id === state.selectedId);
+            if (!annotation) {
+                return;
+            }
+            annotation[field] = value;
+            renderAnnotations();
+            renderList();
+            scheduleSave();
+        }
+
+        function deleteSelected() {
+            if (!state.selectedId) {
+                return;
+            }
+            const index = state.annotations.findIndex(item => item.id === state.selectedId);
+            if (index === -1) {
+                return;
+            }
+            state.annotations.splice(index, 1);
+            state.selectedId = state.annotations[index]?.id || state.annotations[index - 1]?.id || null;
+            renderAll();
+            scheduleSave();
+            showToast("标注已删除");
+        }
+
+        function renderAll() {
+            renderAnnotations();
+            renderList();
+            renderEditor();
+            els.countText.textContent = state.annotations.length + " 条";
+        }
+
+        function renderAnnotations() {
+            const keepShade = els.layer.querySelector(".layer-shade");
+            els.layer.innerHTML = "";
+            els.layer.appendChild(keepShade);
+
+            state.annotations.forEach((annotation, index) => {
+                const node = annotation.shape === "rect"
+                    ? renderRectAnnotation(annotation, index)
+                    : renderPointAnnotation(annotation, index);
+                els.layer.appendChild(node);
+            });
+
+            if (state.draftRect && (state.draftRect.width > 2 || state.draftRect.height > 2)) {
+                const draft = document.createElement("div");
+                draft.className = "draft-box";
+                draft.style.left = screenX(state.draftRect) + "px";
+                draft.style.top = screenY(state.draftRect) + "px";
+                draft.style.width = state.draftRect.width + "px";
+                draft.style.height = state.draftRect.height + "px";
+                els.layer.appendChild(draft);
+            }
+        }
+
+        function screenX(annotation) {
+            return annotation.x - (annotation.positionMode === "viewport" ? 0 : state.scrollX);
+        }
+
+        function screenY(annotation) {
+            return annotation.y - (annotation.positionMode === "viewport" ? 0 : state.scrollY);
+        }
+
+        function sourceElementForAnnotation(annotation) {
+            const doc = els.frame.contentDocument;
+            if (!doc || !annotation.anchorPath) {
+                return null;
+            }
+            try {
+                return doc.querySelector(annotation.anchorPath);
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function surfaceKeyAtAnnotation(annotation) {
+            const doc = els.frame.contentDocument;
+            const win = getFrameWindow();
+            if (!doc || !win) {
+                return "";
+            }
+            const x = screenX(annotation);
+            const y = screenY(annotation);
+            const layerRect = els.layer.getBoundingClientRect();
+            if (x < 0 || y < 0 || x > layerRect.width || y > layerRect.height) {
+                return annotation.surfaceKey || "";
+            }
+            const element = doc.elementFromPoint(x, y);
+            return surfaceKeyForElement(element, doc, win);
+        }
+
+        function isAnnotationHidden(annotation) {
+            const doc = els.frame.contentDocument;
+            if (!doc) {
+                return false;
+            }
+            if (!pageContextMatches(annotation)) {
+                return true;
+            }
+            const x = screenX(annotation);
+            const y = screenY(annotation);
+            const layerRect = els.layer.getBoundingClientRect();
+            if (x < 0 || y < 0 || x > layerRect.width || y > layerRect.height) {
+                return false;
+            }
+
+            if (annotation.anchorPath) {
+                const source = sourceElementForAnnotation(annotation);
+                const win = getFrameWindow();
+                if (!source || !win || !isElementVisible(source, doc, win) || !pageContextMatches(annotation)) {
+                    return true;
+                }
+                const top = doc.elementFromPoint(x, y);
+                if (!top) {
+                    return false;
+                }
+                if (top === source || source.contains(top) || top.contains(source)) {
+                    return false;
+                }
+                const sourceSurface = annotation.surfaceKey || surfaceKeyForElement(source, doc, win);
+                const topSurface = surfaceKeyForElement(top, doc, win);
+                if (topSurface && topSurface !== sourceSurface) {
+                    return true;
+                }
+                return pageRootForElement(source, doc, win) !== pageRootForElement(top, doc, win);
+            }
+
+            return false;
+        }
+
+        function renderPointAnnotation(annotation, index) {
+            const marker = document.createElement("button");
+            marker.type = "button";
+            marker.className = "marker" + (annotation.id === state.selectedId ? " selected" : "") + (isAnnotationHidden(annotation) ? " annotation-hidden" : "");
+            marker.textContent = index + 1;
+            marker.title = annotation.title || "未命名标注";
+            marker.style.left = screenX(annotation) + "px";
+            marker.style.top = screenY(annotation) + "px";
+            marker.addEventListener("click", event => {
+                event.stopPropagation();
+                selectAnnotation(annotation.id, false);
+            });
+            return marker;
+        }
+
+        function renderRectAnnotation(annotation, index) {
+            const box = document.createElement("button");
+            box.type = "button";
+            box.className = "box-marker" + (annotation.id === state.selectedId ? " selected" : "") + (isAnnotationHidden(annotation) ? " annotation-hidden" : "");
+            box.title = annotation.title || "未命名标注";
+            box.style.left = screenX(annotation) + "px";
+            box.style.top = screenY(annotation) + "px";
+            box.style.width = annotation.width + "px";
+            box.style.height = annotation.height + "px";
+            box.addEventListener("click", event => {
+                event.stopPropagation();
+                selectAnnotation(annotation.id, false);
+            });
+
+            const badge = document.createElement("span");
+            badge.className = "box-badge";
+            badge.textContent = index + 1;
+            box.appendChild(badge);
+            return box;
+        }
+
+        function renderList() {
+            els.annotationList.innerHTML = "";
+            if (!state.annotations.length) {
+                const empty = document.createElement("div");
+                empty.className = "editor-empty";
+                empty.textContent = state.html ? "切换到标注模式后，点击页面打点或拖拽框选区域。" : "导入 HTML 原型后开始标注。";
+                els.annotationList.appendChild(empty);
+                return;
+            }
+
+            state.annotations.forEach((annotation, index) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "annotation-item" + (annotation.id === state.selectedId ? " active" : "");
+                item.innerHTML = `
+                    <div class="item-line">
+                        <span class="item-title">${index + 1}. ${escapeHtml(annotation.title || "未命名标注")}</span>
+                        <span class="tag">${escapeHtml(annotation.type || "交互")}</span>
+                    </div>
+                    <p class="item-desc">${escapeHtml(annotation.description || "暂无说明")}</p>
+                `;
+                item.addEventListener("click", () => selectAnnotation(annotation.id, true));
+                els.annotationList.appendChild(item);
+            });
+        }
+
+        function renderEditor() {
+            const annotation = state.annotations.find(item => item.id === state.selectedId);
+            if (!annotation) {
+                els.editor.innerHTML = `<div class="editor-empty">选择一条标注后，可编辑类型、标题和说明。</div>`;
+                return;
+            }
+
+            els.editor.innerHTML = `
+                <div class="field">
+                    <label for="editType">类型</label>
+                    <select id="editType">
+                        ${TYPES.map(type => `<option value="${type}" ${type === annotation.type ? "selected" : ""}>${type}</option>`).join("")}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="editTitle">标题</label>
+                    <input id="editTitle" type="text" value="${escapeHtml(annotation.title || "")}" maxlength="80">
+                </div>
+                <div class="field">
+                    <label for="editDescription">说明</label>
+                    <textarea id="editDescription" maxlength="1200">${escapeHtml(annotation.description || "")}</textarea>
+                </div>
+                <div class="editor-actions">
+                    <button class="tool-btn" id="focusBtn" type="button">定位标注</button>
+                    <button class="tool-btn danger" id="deleteBtn" type="button">删除标注</button>
+                </div>
+            `;
+
+            document.getElementById("editType").addEventListener("change", event => updateSelectedField("type", event.target.value));
+            document.getElementById("editTitle").addEventListener("input", event => updateSelectedField("title", event.target.value));
+            document.getElementById("editDescription").addEventListener("input", event => updateSelectedField("description", event.target.value));
+            document.getElementById("focusBtn").addEventListener("click", () => scrollFrameToAnnotation(annotation.id));
+            document.getElementById("deleteBtn").addEventListener("click", deleteSelected);
+        }
+
+        function buildReadonlyHtml(serializedProject) {
+            return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>研发标注版</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: 56px 1fr;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: #eef0ed;
+            color: #171717;
+        }
+        .top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 0 18px;
+            border-bottom: 1px solid #d9dde3;
+            background: #fff;
+        }
+        .top strong { font-size: 15px; }
+        .top span { color: #6b6f76; font-size: 12px; }
+        .layout {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 14px;
+            padding: 14px;
+        }
+        .stage, .side {
+            min-height: 0;
+            border: 1px solid #d9dde3;
+            background: #fff;
+            box-shadow: 0 14px 34px rgba(23,23,23,.12);
+        }
+        .stage { position: relative; overflow: hidden; }
+        iframe { width: 100%; height: 100%; border: 0; display: block; }
+        .layer { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+        .marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            border: 2px solid #fff;
+            background: #e34b31;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            box-shadow: 0 0 0 2px #171717, 3px 3px 0 rgba(23,23,23,.2);
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        .marker.active { background: #0e8f7b; }
+        .box {
+            position: absolute;
+            border: 2px solid #e34b31;
+            background: rgba(227,75,49,.12);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.85), 3px 3px 0 rgba(23,23,23,.2);
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        .box.active {
+            border-color: #0e8f7b;
+            background: rgba(14,143,123,.14);
+        }
+        .badge {
+            position: absolute;
+            left: -2px;
+            top: -30px;
+            min-width: 28px;
+            height: 26px;
+            display: grid;
+            place-items: center;
+            padding: 0 8px;
+            border: 2px solid #fff;
+            background: #e34b31;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            box-shadow: 0 0 0 2px #171717;
+        }
+        .box.active .badge { background: #0e8f7b; }
+        .side {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            overflow: hidden;
+        }
+        .side-head {
+            padding: 15px;
+            border-bottom: 1px solid #d9dde3;
+        }
+        .side-head h1 {
+            margin: 0 0 8px;
+            font-size: 18px;
+        }
+        .side-head p {
+            margin: 0;
+            color: #6b6f76;
+            font-size: 12px;
+        }
+        .list {
+            overflow: auto;
+            padding: 10px;
+            display: grid;
+            align-content: start;
+            gap: 8px;
+            background: #f6f7f4;
+        }
+        .item {
+            border: 1px solid #d9dde3;
+            background: #fff;
+            padding: 11px;
+            text-align: left;
+            cursor: pointer;
+        }
+        .item.active {
+            border-color: #171717;
+            box-shadow: 4px 4px 0 rgba(23,23,23,.16);
+        }
+        .line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .title {
+            min-width: 0;
+            font-size: 13px;
+            font-weight: 800;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tag {
+            flex: none;
+            border: 1px solid rgba(23,23,23,.15);
+            background: #f0f6f4;
+            color: #0b6b5d;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .desc {
+            margin: 0;
+            color: #4b5159;
+            font-size: 13px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+        @media (max-width: 980px) {
+            body { height: auto; min-height: 100vh; }
+            .layout { grid-template-columns: 1fr; }
+            .stage { min-height: 70vh; }
+            .side { min-height: 420px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="top">
+        <strong id="name">研发标注版</strong>
+        <span id="summary"></span>
+    </header>
+    <main class="layout">
+        <section class="stage">
+            <iframe id="frame" title="原型预览" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-same-origin"></iframe>
+            <div class="layer" id="layer"></div>
+        </section>
+        <aside class="side">
+            <div class="side-head">
+                <h1>标注说明</h1>
+                <p>点击右侧条目或画布编号可定位标注。</p>
+            </div>
+            <div class="list" id="list"></div>
+        </aside>
+    </main>
+    <script>
+        const project = ${serializedProject};
+        const state = { selectedId: project.annotations[0]?.id || null, scrollX: 0, scrollY: 0 };
+        const frame = document.getElementById("frame");
+        const layer = document.getElementById("layer");
+        const list = document.getElementById("list");
+        document.getElementById("name").textContent = project.fileName || "研发标注版";
+        document.getElementById("summary").textContent = (project.annotations || []).length + " 条标注";
+        frame.srcdoc = project.html || "";
+
+        function escapeHtml(value) {
+            return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+        function win() { return frame.contentWindow; }
+        function updateScroll() {
+            if (!win()) return;
+            state.scrollX = win().scrollX || 0;
+            state.scrollY = win().scrollY || 0;
+            renderLayer();
+        }
+        frame.addEventListener("load", () => {
+            if (win()) {
+                win().addEventListener("scroll", updateScroll, { passive: true });
+                win().addEventListener("resize", updateScroll);
+            }
+            updateScroll();
+            renderList();
+        });
+        function select(id, scroll) {
+            state.selectedId = id;
+            if (scroll) {
+                const item = project.annotations.find(note => note.id === id);
+                if (item && win() && item.positionMode !== "viewport") win().scrollTo({ left: Math.max(0, item.x - 120), top: Math.max(0, item.y - 160), behavior: "smooth" });
+                setTimeout(updateScroll, 260);
+            }
+            renderLayer();
+            renderList();
+        }
+        function screenX(note) {
+            return note.x - (note.positionMode === "viewport" ? 0 : state.scrollX);
+        }
+        function screenY(note) {
+            return note.y - (note.positionMode === "viewport" ? 0 : state.scrollY);
+        }
+        function renderLayer() {
+            layer.innerHTML = "";
+            (project.annotations || []).forEach((note, index) => {
+                const active = note.id === state.selectedId;
+                if (note.shape === "rect") {
+                    const box = document.createElement("button");
+                    box.type = "button";
+                    box.className = "box" + (active ? " active" : "");
+                    box.style.left = screenX(note) + "px";
+                    box.style.top = screenY(note) + "px";
+                    box.style.width = note.width + "px";
+                    box.style.height = note.height + "px";
+                    box.onclick = () => select(note.id, false);
+                    const badge = document.createElement("span");
+                    badge.className = "badge";
+                    badge.textContent = index + 1;
+                    box.appendChild(badge);
+                    layer.appendChild(box);
+                } else {
+                    const marker = document.createElement("button");
+                    marker.type = "button";
+                    marker.className = "marker" + (active ? " active" : "");
+                    marker.textContent = index + 1;
+                    marker.style.left = screenX(note) + "px";
+                    marker.style.top = screenY(note) + "px";
+                    marker.onclick = () => select(note.id, false);
+                    layer.appendChild(marker);
+                }
+            });
+        }
+        function renderList() {
+            list.innerHTML = "";
+            (project.annotations || []).forEach((note, index) => {
+                const item = document.createElement("div");
+                item.className = "item" + (note.id === state.selectedId ? " active" : "");
+                item.innerHTML = '<div class="line"><span class="title">' + (index + 1) + '. ' + escapeHtml(note.title || "未命名标注") + '</span><span class="tag">' + escapeHtml(note.type || "交互") + '</span></div><p class="desc">' + escapeHtml(note.description || "暂无说明") + '</p>';
+                item.onclick = () => select(note.id, true);
+                list.appendChild(item);
+            });
+        }
+    <\/script>
+</body>
+</html>`;
+        }
+
+        els.htmlInput.addEventListener("change", event => importHtml(event.target.files[0]));
+        els.emptyHtmlInput.addEventListener("change", event => importHtml(event.target.files[0]));
+        els.projectInput.addEventListener("change", event => importProject(event.target.files[0]));
+        els.exportProjectBtn.addEventListener("click", exportProject);
+        els.exportHtmlBtn.addEventListener("click", exportReadonlyHtml);
+        els.restoreDraftBtn.addEventListener("click", restoreDraft);
+        els.browseModeBtn.addEventListener("click", () => setMode("browse"));
+        els.annotateModeBtn.addEventListener("click", () => {
+            if (!state.html) {
+                showToast("请先导入 HTML 原型");
+                return;
+            }
+            setMode("annotate");
+        });
+        els.layer.addEventListener("pointerdown", handlePointerDown);
+        els.layer.addEventListener("pointermove", handlePointerMove);
+        els.layer.addEventListener("pointerup", handlePointerUp);
+        els.layer.addEventListener("wheel", handleLayerWheel, { passive: false });
+        els.layer.addEventListener("pointercancel", () => {
+            state.pointerStart = null;
+            state.draftRect = null;
+            renderAnnotations();
+        });
+        els.frame.addEventListener("load", bindFrameScroll);
+        window.addEventListener("resize", renderAnnotations);
+
+        renderAll();
+    </script>
+</body>
+</html>
