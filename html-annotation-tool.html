@@ -1655,7 +1655,7 @@
                 if (!root || !isElementVisible(root)) {
                     return false;
                 }
-                return !context.rootFingerprint || visibleTextFingerprint(root) === context.rootFingerprint;
+                return true;
             }
 
             function elementAtNote(note) {
@@ -1699,12 +1699,10 @@
                 if (top === source || source.contains(top) || top.contains(source)) {
                     return false;
                 }
-                const sourceSurface = note.surfaceKey || surfaceKeyForElement(source);
-                const topSurface = surfaceKeyForElement(top);
-                if (topSurface && topSurface !== sourceSurface) {
+                if (isOverlayCandidate(top)) {
                     return true;
                 }
-                return pageRootForElement(source) !== pageRootForElement(top);
+                return false;
             }
 
             function place(node, note, isPoint) {
@@ -2204,7 +2202,7 @@
             if (!root || !isElementVisible(root, doc, win)) {
                 return false;
             }
-            return !context.rootFingerprint || visibleTextFingerprint(root, doc, win) === context.rootFingerprint;
+            return true;
         }
 
         function annotationContextAtPoint(point) {
@@ -2475,7 +2473,7 @@
             if (annotation.anchorPath) {
                 const source = sourceElementForAnnotation(annotation);
                 const win = getFrameWindow();
-                if (!source || !win || !isElementVisible(source, doc, win) || !pageContextMatches(annotation)) {
+                if (!source || !win || !isElementVisible(source, doc, win)) {
                     return true;
                 }
                 const top = doc.elementFromPoint(x, y);
@@ -2485,12 +2483,10 @@
                 if (top === source || source.contains(top) || top.contains(source)) {
                     return false;
                 }
-                const sourceSurface = annotation.surfaceKey || surfaceKeyForElement(source, doc, win);
-                const topSurface = surfaceKeyForElement(top, doc, win);
-                if (topSurface && topSurface !== sourceSurface) {
+                if (isOverlayCandidate(top, doc, win)) {
                     return true;
                 }
-                return pageRootForElement(source, doc, win) !== pageRootForElement(top, doc, win);
+                return false;
             }
 
             return false;
