@@ -1029,11 +1029,68 @@
             reader.readAsText(file);
         }
 
+        function extractEditableProjectFromHtml(html, fallbackFileName) {
+            let doc = null;
+            try {
+                doc = new DOMParser().parseFromString(html, "text/html");
+            } catch (error) {
+                return null;
+            }
+            const dataNode = doc.getElementById("html-annotation-project-data");
+            if (dataNode) {
+                try {
+                    const project = JSON.parse(dataNode.textContent || "");
+                    if (!project || typeof project.html !== "string") {
+                        return null;
+                    }
+                    return {
+                        ...project,
+                        fileName: project.fileName || fallbackFileName || "未命名原型.html",
+                        annotations: Array.isArray(project.annotations) ? project.annotations : []
+                    };
+                } catch (error) {
+                    showToast("标注 HTML 内嵌项目数据已损坏");
+                    return null;
+                }
+            }
+
+            const legacyScript = doc.getElementById("html-annotation-export-script");
+            if (!legacyScript) {
+                return null;
+            }
+            const match = (legacyScript.textContent || "").match(/window\.__HTML_ANNOTATION_EXPORT__\s*=\s*({[\s\S]*?});\s*\n/);
+            if (!match) {
+                return null;
+            }
+            try {
+                const legacyProject = JSON.parse(match[1]);
+                const annotations = Array.isArray(legacyProject.annotations) ? legacyProject.annotations : [];
+                doc.getElementById("html-annotation-export-style")?.remove();
+                doc.getElementById("html-annotation-export-script")?.remove();
+                doc.getElementById("html-annotation-export-layer")?.remove();
+                doc.getElementById("html-annotation-export-tooltip")?.remove();
+                return {
+                    version: 1,
+                    fileName: fallbackFileName || "未命名原型.html",
+                    html: "<!DOCTYPE html>\n" + doc.documentElement.outerHTML,
+                    annotations
+                };
+            } catch (error) {
+                showToast("旧版标注 HTML 解析失败");
+                return null;
+            }
+        }
+
         function importHtml(file) {
             if (!file) {
                 return;
             }
             readFile(file, html => {
+                const editableProject = extractEditableProjectFromHtml(html, file.name);
+                if (editableProject) {
+                    loadProject(editableProject, "可编辑标注 HTML 已导入");
+                    return;
+                }
                 loadProject({
                     fileName: file.name,
                     html,
@@ -1099,7 +1156,7 @@
             const data = JSON.stringify(getReadonlyProject()).replace(/<\//g, "<\\/");
             const doc = buildEmbeddedReadonlyHtml(data);
             downloadText(baseName(state.fileName) + "-研发标注版.html", doc, "text/html;charset=utf-8");
-            showToast("只读标注 HTML 已导出");
+            showToast("可回导标注 HTML 已导出");
         }
 
         function getReadonlyProject() {
@@ -1150,11 +1207,10 @@
             const project = JSON.parse(serializedProject);
             const html = project.html || "";
             const annotations = Array.isArray(project.annotations) ? project.annotations : [];
-            if (!annotations.length) {
-                return html;
-            }
 
             const payload = JSON.stringify({ annotations }).replace(/</g, "\\u003c");
+            const projectPayload = JSON.stringify(project).replace(/</g, "\\u003c");
+            const projectData = "<scr" + "ipt id=\"html-annotation-project-data\" type=\"application/json\">" + projectPayload + "<" + "/scr" + "ipt>";
             const style = `
 <style id="html-annotation-export-style">
     #html-annotation-export-layer {
@@ -1263,7 +1319,7 @@
     }
 </style>`;
             const script = "<scr" + "ipt id=\"html-annotation-export-script\">window.__HTML_ANNOTATION_EXPORT__=" + payload + ";\n(" + renderEmbeddedReadonlyAnnotations.toString() + ")();<" + "/scr" + "ipt>";
-            return injectIntoOriginalHtml(html, "\n" + style + "\n" + script + "\n");
+            return injectIntoOriginalHtml(html, "\n" + projectData + "\n" + style + "\n" + script + "\n");
         }
 
         function injectIntoOriginalHtml(html, injection) {
