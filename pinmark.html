@@ -1199,7 +1199,13 @@
             note.anchorScrollX = win.scrollX || 0;
             note.anchorScrollY = win.scrollY || 0;
             note.surfaceKey = note.surfaceKey || surfaceKeyForElement(source, doc, win);
-            note.pageContext = note.pageContext || pageContextForElement(source, doc, win);
+            note.pageContext = {
+                ...pageContextForElement(source, doc, win),
+                ...(note.pageContext || {})
+            };
+            if (!note.pageContext.local) {
+                note.pageContext.local = pageContextForElement(source, doc, win).local;
+            }
             return note;
         }
 
@@ -1643,6 +1649,32 @@
                 return textHash(text);
             }
 
+            function localContextForElement(element, pageRoot) {
+                if (!element || !pageRoot) {
+                    return null;
+                }
+                let node = element;
+                let best = element;
+                while (node && node.nodeType === 1 && node !== document.documentElement) {
+                    if (isAnnotationExportNode(node)) {
+                        node = node.parentElement;
+                        continue;
+                    }
+                    if (visibleTextFingerprint(node)) {
+                        best = node;
+                    }
+                    if (node === pageRoot) {
+                        break;
+                    }
+                    node = node.parentElement;
+                }
+                const fingerprint = visibleTextFingerprint(best);
+                return fingerprint ? {
+                    path: cssPathForElement(best),
+                    fingerprint
+                } : null;
+            }
+
             function pageRootForElement(element) {
                 if (!element || element === document.documentElement) {
                     return document.body || document.documentElement;
@@ -1686,6 +1718,7 @@
                     route: routeKey(),
                     rootPath: cssPathForElement(root),
                     rootFingerprint: visibleTextFingerprint(root),
+                    local: localContextForElement(element, root),
                     overlay: overlayContextForElement(element)
                 };
             }
@@ -1710,6 +1743,27 @@
                 }
                 if (!root || !isElementVisible(root)) {
                     return false;
+                }
+                const currentRootFingerprint = visibleTextFingerprint(root);
+                if (context.rootFingerprint && currentRootFingerprint && context.rootFingerprint !== currentRootFingerprint) {
+                    return false;
+                }
+                if (context.local) {
+                    let localRoot = null;
+                    if (context.local.path) {
+                        try {
+                            localRoot = document.querySelector(context.local.path);
+                        } catch (error) {
+                            localRoot = null;
+                        }
+                    }
+                    if (!localRoot || !isElementVisible(localRoot)) {
+                        return false;
+                    }
+                    const currentLocalFingerprint = visibleTextFingerprint(localRoot);
+                    if (context.local.fingerprint && currentLocalFingerprint && context.local.fingerprint !== currentLocalFingerprint) {
+                        return false;
+                    }
                 }
                 return true;
             }
@@ -2074,6 +2128,28 @@
             return textHash(text);
         }
 
+        function localContextForElement(element, pageRoot, doc, win) {
+            if (!element || !pageRoot) {
+                return null;
+            }
+            let node = element;
+            let best = element;
+            while (node && node.nodeType === 1 && node !== doc.documentElement) {
+                if (visibleTextFingerprint(node, doc, win)) {
+                    best = node;
+                }
+                if (node === pageRoot) {
+                    break;
+                }
+                node = node.parentElement;
+            }
+            const fingerprint = visibleTextFingerprint(best, doc, win);
+            return fingerprint ? {
+                path: cssPathForElement(best, doc),
+                fingerprint
+            } : null;
+        }
+
         function isOverlayCandidate(element, doc, win) {
             if (!element || element === doc.body || element === doc.documentElement) {
                 return false;
@@ -2227,6 +2303,7 @@
                 route: frameRouteKey(doc, win),
                 rootPath: cssPathForElement(root, doc),
                 rootFingerprint: visibleTextFingerprint(root, doc, win),
+                local: localContextForElement(element, root, doc, win),
                 overlay: overlayContextForElement(element, doc, win)
             };
         }
@@ -2257,6 +2334,27 @@
             }
             if (!root || !isElementVisible(root, doc, win)) {
                 return false;
+            }
+            const currentRootFingerprint = visibleTextFingerprint(root, doc, win);
+            if (context.rootFingerprint && currentRootFingerprint && context.rootFingerprint !== currentRootFingerprint) {
+                return false;
+            }
+            if (context.local) {
+                let localRoot = null;
+                if (context.local.path) {
+                    try {
+                        localRoot = doc.querySelector(context.local.path);
+                    } catch (error) {
+                        localRoot = null;
+                    }
+                }
+                if (!localRoot || !isElementVisible(localRoot, doc, win)) {
+                    return false;
+                }
+                const currentLocalFingerprint = visibleTextFingerprint(localRoot, doc, win);
+                if (context.local.fingerprint && currentLocalFingerprint && context.local.fingerprint !== currentLocalFingerprint) {
+                    return false;
+                }
             }
             return true;
         }
